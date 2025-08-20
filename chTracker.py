@@ -1,18 +1,15 @@
-import re
-import sys
-import string
 import argparse
-from pathlib import Path
-from operator import methodcaller as mc
-from itertools import chain
+import re
+import string
+import sys
 from functools import partial
-
+from itertools import chain
+from operator import methodcaller as mc
+from pathlib import Path
 
 if sys.version_info < (3, 8):
     print('Please use Python 3.8 or higher')
     sys.exit(1)
-
-
 
 
 def _encode(obj, encoding='utf-8'):
@@ -36,8 +33,6 @@ def _encode(obj, encoding='utf-8'):
     else:
         raise ValueError('Input must be int, bytes, list or dict')
     return ret
-
-
 
 
 def _decode(s, encoding='ascii'):
@@ -71,8 +66,6 @@ def _decode(s, encoding='ascii'):
     if rest:
         raise ValueError("Invalid bencoded data")
     return ret
-
-
 
 
 def main(args):
@@ -127,8 +120,6 @@ def main(args):
             print(f'\'{fpath.absolute()}\' : OK')
 
 
-
-
 class _CustomHelpFormatter(argparse.HelpFormatter):
 
     def __init__(self, prog):
@@ -140,8 +131,6 @@ class _CustomHelpFormatter(argparse.HelpFormatter):
         default = self._get_default_metavar_for_optional(action)
         args_string = self._format_args(action, default)
         return ', '.join(action.option_strings) + ' ' + args_string
-
-
 
 
 if __name__ == '__main__':
