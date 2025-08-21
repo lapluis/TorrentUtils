@@ -42,15 +42,15 @@ class Torrent:
         self._tracker_lst = list()  # for `announce` and `announce-list`
         self._comment_str = str()  # for `comment`
         self._creator_str = str()  # for `created by`
-        self._datesec_int = 0  # for `creation date`
+        self._datetime_int = 0  # for `creation date`
         self._enc4txt_str = 'UTF-8'  # for `encoding`
-        self._srcpath_lst = list()  # for `files`
-        self._srcsize_lst = list()  # for `length`
-        self._trtname_str = str()  # for `name`
-        self._piecesz_int = 4096 << 10  # for `piece length`
-        self._srcsha1_byt = bytes()  # for `pieces`
+        self._src_path_lst = list()  # for `files`
+        self._src_size_lst = list()  # for `length`
+        self._tr_name_str = str()  # for `name`
+        self._piece_len_int = 4096 << 10  # for `piece length`
+        self._src_sha1_byte = bytes()  # for `pieces`
         self._private_int = 0  # for `private`
-        self._tsource_str = str()  # for `source`
+        self._tr_source_str = str()  # for `source`
 
         # metadata init
         self.set(**kwargs)
@@ -70,7 +70,7 @@ class Torrent:
     def announce(self, url):
         """Set the first tracker."""
         assert isinstance(url, str), f"expect str, not {url.__class__.__name__}"
-        self.setTracker([url] + self.announce_list)  # `setTracker()` will deduplicate
+        self.set_tracker([url] + self.announce_list)  # `setTracker()` will deduplicate
 
     @property
     def announce_list(self) -> list:
@@ -81,7 +81,7 @@ class Torrent:
     def announce_list(self, urls):
         """Set the whole tracker list, must be no less than 2."""
         if len(urls) >= 2:
-            self.setTracker(urls)
+            self.set_tracker(urls)
         else:
             raise ValueError(f'Trackers supplied to announce-list must be no less than 2.')
 
@@ -93,7 +93,7 @@ class Torrent:
     @comment.setter
     def comment(self, chars):
         """Set the comment message."""
-        self.setComment(chars)
+        self.set_comment(chars)
 
     @property
     def created_by(self) -> str:
@@ -103,17 +103,17 @@ class Torrent:
     @created_by.setter
     def created_by(self, creator):
         """Set the creator of the torrent."""
-        self.setCreator(creator)
+        self.set_creator(creator)
 
     @property
     def creation_date(self) -> int:
         """Return torrent creation time, counted as the number of second since 1970-01-01."""
-        return self._datesec_int
+        return self._datetime_int
 
     @creation_date.setter
     def creation_date(self, date):
         """Set torrent creation time."""
-        self.setDate(date)
+        self.set_date(date)
 
     @property
     def encoding(self) -> str:
@@ -123,43 +123,43 @@ class Torrent:
     @encoding.setter
     def encoding(self, enc):
         """Set the encoding for text."""
-        self.setEncoding(enc)
+        self.set_encoding(enc)
 
     @property
     def files(self) -> list:
         """Return the list of file size and path parts if no less than 2 files (repel `length`). Read-only."""
-        return list([fsize, fpath.parts] for fsize, fpath in zip(self._srcsize_lst, self._srcpath_lst)) \
-            if len(self._srcpath_lst) >= 2 else []
+        return list([f_size, f_path.parts] for f_size, f_path in zip(self._src_size_lst, self._src_path_lst)) \
+            if len(self._src_path_lst) >= 2 else []
 
     @property
     def length(self) -> int:
         """Return the size of single file torrent (repel `files`). Read-only."""
-        return self._srcsize_lst[0] if len(self._srcsize_lst) == 1 else 0
+        return self._src_size_lst[0] if len(self._src_size_lst) == 1 else 0
 
     @property
     def name(self) -> str:
         """Return the root name of the torrent."""
-        return self._trtname_str
+        return self._tr_name_str
 
     @name.setter
     def name(self, name):
         """Set the root name of the torrent."""
-        self.setName(name)
+        self.set_name(name)
 
     @property
     def piece_length(self) -> int:
         """Return the piece size in bytes."""
-        return self._piecesz_int
+        return self._piece_len_int
 
     @piece_length.setter
     def piece_length(self, size):
         """Set the piece size in bytes."""
-        self.setPieceLength(size)
+        self.set_piece_length(size)
 
     @property
     def pieces(self) -> bytes:
         """Return the long raw bytes of pieces' sha1. Read-only."""
-        return self._srcsha1_byt
+        return self._src_sha1_byte
 
     @property
     def private(self) -> int:
@@ -169,17 +169,17 @@ class Torrent:
     @private.setter
     def private(self, private):
         """Set torrent private or not."""
-        self.setPrivate(private)
+        self.set_private(private)
 
     @property
     def source(self) -> str:
         """Return the special message particularly used by private trackers."""
-        return self._tsource_str
+        return self._tr_source_str
 
     @source.setter
     def source(self, src):
         """Set the special message, which is normally invisible in clients."""
-        self.setSource(src)
+        self.set_source(src)
 
     """-----------------------------------------------------------------------------------------------------------------
     Useful public torrent properties
@@ -193,17 +193,17 @@ class Torrent:
     @tracker_list.setter
     def tracker_list(self, urls):
         """Set the whole tracker urls."""
-        self.setTracker(urls)
+        self.set_tracker(urls)
 
     @property
     def file_list(self) -> list:
         """Unlike `files` and `length`, always returns the full file size and paths unconditionally. Read-only."""
-        return list([fsize, fpath.parts] for fsize, fpath in zip(self._srcsize_lst, self._srcpath_lst))
+        return list([f_size, f_path.parts] for f_size, f_path in zip(self._src_size_lst, self._src_path_lst))
 
     @property
     def size(self) -> int:
         """Return the total size of all source files in the torrent. Read-only."""
-        return sum(self._srcsize_lst)
+        return sum(self._src_size_lst)
 
     @property
     def torrent_size(self) -> int:
@@ -213,7 +213,7 @@ class Torrent:
     @property
     def num_pieces(self) -> int:
         """Return the total number of pieces within the torrent. Read-only."""
-        return len(self._srcsha1_byt) // 20
+        return len(self._src_sha1_byte) // 20
 
     @property
     def num_files(self) -> int:
@@ -311,8 +311,8 @@ class Torrent:
             info_dict[b'length'] = self.length
         if self.files:
             info_dict[b'files'] = []
-            for fsize, fpath_parts in self.files:
-                info_dict[b'files'].append({b'length': fsize, b'path': fpath_parts})
+            for f_size, fpath_parts in self.files:
+                info_dict[b'files'].append({b'length': f_size, b'path': fpath_parts})
         if self.name:
             info_dict[b'name'] = self.name
         if self.piece_length:
@@ -356,7 +356,7 @@ class Torrent:
     Property setters
     -----------------------------------------------------------------------------------------------------------------"""
 
-    def addTracker(self, urls, /, top=True):
+    def add_tracker(self, urls, /, top=True):
         """Add trackers.
 
         Arguments:
@@ -382,7 +382,7 @@ class Torrent:
                 else:  # found, no need to update its position
                     pass
 
-    def setTracker(self, urls, /):
+    def set_tracker(self, urls, /):
         """Set tracker list with the given urls, dropping all existing ones.
 
         Argument:
@@ -390,9 +390,9 @@ class Torrent:
         """
         urls = [urls] if isinstance(urls, str) else list(urls)
         self._tracker_lst.clear()
-        self.addTracker(urls)  # `addTracker() will deduplicate
+        self.add_tracker(urls)  # `addTracker() will deduplicate
 
-    def rmTracker(self, urls, /):
+    def rm_tracker(self, urls, /):
         """Remove tracker.
 
         Arguments:
@@ -407,21 +407,21 @@ class Torrent:
             else:
                 self._tracker_lst.pop(idx)  # found, remove it
 
-    def setComment(self, comment, /):
+    def set_comment(self, comment, /):
         """Set the comment message.
 
         Argument:
         comment: The comment message as str."""
         self._comment_str = str(comment)
 
-    def setCreator(self, creator, /):
+    def set_creator(self, creator, /):
         """Set the creator of the torrent.
 
         Argument:
         creator: The str of the creator."""
         self._creator_str = str(creator)
 
-    def setDate(self, date, /):
+    def set_date(self, date, /):
         """Set the time.
 
         Argument:
@@ -429,27 +429,27 @@ class Torrent:
               time tuple or `time.struct_time` otherwise.
         """
         if isinstance(date, (int, float)):
-            self._datesec_int = int(date)
+            self._datetime_int = int(date)
         elif isinstance(date, str):
-            self._datesec_int = int(time.mktime(time.strptime(date)))
+            self._datetime_int = int(time.mktime(time.strptime(date)))
         elif isinstance(date, time.struct_time):
-            self._datesec_int = int(time.mktime(date))
+            self._datetime_int = int(time.mktime(date))
         elif '__len__' in dir(date) and len(date) == 9:
-            self._datesec_int = int(time.mktime(tuple(date)))
+            self._datetime_int = int(time.mktime((date[0], date[1], date[2], date[3], date[4], date[5], date[6], date[7], date[8])))
         else:
             raise ValueError('Supplied date is not understood.')
 
-    def setEncoding(self, enc, /):
+    def set_encoding(self, encoding, /):
         """Set the encoding for text.
 
         Argument:
         enc: The encoding, must be a valid one in python.
         """
-        enc = str(enc)
-        codecs.lookup(enc)  # will raise LookupError if this encoding not exists
-        self._enc4txt_str = enc  # respect the encoding str supplied by user
+        encoding = str(encoding)
+        codecs.lookup(encoding)  # will raise LookupError if this encoding not exists
+        self._enc4txt_str = encoding  # respect the encoding str supplied by user
 
-    def setName(self, name, /):
+    def set_name(self, name, /):
         """Set the root name. Note that this will prevent the torrent from hashing on the source files.
 
         Argument:
@@ -459,9 +459,9 @@ class Torrent:
             raise ValueError('Torrent name cannot be empty.')
         if not all([False if (char in name) else True for char in r'\/:*?"<>|']):
             raise ValueError('Torrent name contains invalid character.')
-        self._trtname_str = name
+        self._tr_name_str = name
 
-    def setPieceLength(self, size, /, no_check=False):
+    def set_piece_length(self, size, /, no_check=False):
         """Set torrent piece size.
         Note that changing piece size to a different value will clear existing torrent piece hash.
         Exception will be raised when the new piece size looks strange:
@@ -475,18 +475,18 @@ class Torrent:
         """
         size = int(size)
         no_check = bool(no_check)
-        if size == self._piecesz_int:  # we have nothing to do
+        if size == self._piece_len_int:  # we have nothing to do
             return
 
         if size < 16384:  # piece size must be larger than 16KiB
             raise PieceSizeTooSmall()
         if (not no_check) and ((math.log2(size / 262144) % 1) or (size < 262144) or (size > 33554432)):
             raise PieceSizeUncommon()
-        if size != self._piecesz_int:  # changing piece size will clear existing hash
-            self._srcsha1_byt = bytes()
-        self._piecesz_int = size
+        if size != self._piece_len_int:  # changing piece size will clear existing hash
+            self._src_sha1_byte = bytes()
+        self._piece_len_int = size
 
-    def setPrivate(self, private, /):
+    def set_private(self, private, /):
         """Set torrent private or not.
 
         Argument:
@@ -494,13 +494,13 @@ class Torrent:
         """
         self._private_int = int(bool(private))
 
-    def setSource(self, src, /):
+    def set_source(self, src, /):
         """Set the source message.
 
         Argument:
         src: The message text that can be converted to `str`.
         """
-        self._tsource_str = str(src)
+        self._tr_source_str = str(src)
 
     def set(self, **metadata):
         """Set various metadata with more flexible key aliases:
@@ -523,25 +523,25 @@ class Torrent:
         for key, value in metadata.items():
             key = re.sub(r'[\s_]', '', key).lower()
             if key in ('t', 'tr', 'tracker', 'trackers', 'trackerlist', 'announce', 'announces', 'announcelist'):
-                self.setTracker(value)
+                self.set_tracker(value)
             elif key in ('c', 'comment', 'comments'):
-                self.setComment(value)
+                self.set_comment(value)
             elif key in ('b', 'by', 'createdby', 'creator', 'tool', 'creatingtool'):
-                self.setCreator(value)
+                self.set_creator(value)
             elif key in ('d', 'date', 'time', 'second', 'seconds', 'creationdate', 'creationtime', 'creatingdate', 'creatingtime'):
-                self.setDate(value)
+                self.set_date(value)
             elif key in ('e', 'enc', 'encoding', 'codec'):
-                self.setEncoding(value)
+                self.set_encoding(value)
             elif key in ('n', 'name', 'torrentname'):
-                self.setName(value)
+                self.set_name(value)
             elif key in ('ps', 'pl', 'piecesize', 'piecelength'):
-                self.setPieceLength(value)
+                self.set_piece_length(value)
             elif key in ('p', 'private', 'privatetorrent', 'torrentprivate'):
-                self.setPrivate(value)
+                self.set_private(value)
             elif key in ('pub', 'public', 'publictorrent', 'torrentpublic'):
-                self.setPrivate(not value)
+                self.set_private(not value)
             elif key in ('s', 'src', 'source'):
-                self.setSource(value)
+                self.set_source(value)
             else:
                 raise KeyError(f"Unknown key: {key}.")
 
@@ -549,15 +549,15 @@ class Torrent:
     Input/output operations
     -----------------------------------------------------------------------------------------------------------------"""
 
-    def read(self, tpath, /):
+    def read(self, tr_path, /):
         """Load everything from the template. Note that this function will clear all existing properties.
 
         Argument:
-        tpath: the path to the torrent."""
-        tpath = pathlib.Path(tpath)
-        if not tpath.is_file():
-            raise FileNotFoundError(f"The supplied '{tpath}' does not exist.")
-        torrent_dict = bdecode(tpath.read_bytes())
+        tr_path: the path to the torrent."""
+        tr_path = pathlib.Path(tr_path)
+        if not tr_path.is_file():
+            raise FileNotFoundError(f"The supplied '{tr_path}' does not exist.")
+        torrent_dict = bdecode(tr_path.read_bytes())
 
         # we need to know encoding first
         encoding = torrent_dict.get(b'encoding', b'UTF-8').decode()  # str
@@ -581,37 +581,37 @@ class Torrent:
         source = torrent_dict.get(b'info').get(b'source', b'').decode(encoding)  # str
 
         # everything looks good, now let's write attributes
-        self.setTracker(trackers)
-        self.setComment(comment)
-        self.setCreator(created_by)
-        self.setDate(creation_date)
-        self.setEncoding(encoding)
-        self.setName(name)
-        self.setPieceLength(piece_length, no_check=True)
-        self.setPrivate(private)
-        self.setSource(source)
+        self.set_tracker(trackers)
+        self.set_comment(comment)
+        self.set_creator(created_by)
+        self.set_date(creation_date)
+        self.set_encoding(encoding)
+        self.set_name(name)
+        self.set_piece_length(piece_length, no_check=True)
+        self.set_private(private)
+        self.set_source(source)
 
-        self._srcsha1_byt = pieces
+        self._src_sha1_byte = pieces
         if length and not files:
-            self._srcpath_lst = [pathlib.Path('..')]
-            self._srcsize_lst = [length]
+            self._src_path_lst = [pathlib.Path('..')]
+            self._src_size_lst = [length]
         elif not length and files:
-            fsize_list = []
-            fpath_list = []
+            f_size_list = []
+            f_path_list = []
             for file in files:
-                fsize_list.append(file[b'length'])
-                fpath_list.append(pathlib.Path().joinpath(*map(methodcaller('decode', encoding), file[b'path'])))
-            self._srcsize_lst = fsize_list
-            self._srcpath_lst = fpath_list
+                f_size_list.append(file[b'length'])
+                f_path_list.append(pathlib.Path().joinpath(*map(methodcaller('decode', encoding), file[b'path'])))
+            self._src_size_lst = f_size_list
+            self._src_path_lst = f_path_list
         else:
             raise ValueError('Unexpected error in handling source files structure.')
 
-    def readMetadata(self, tpath, /, include_key=None, exclude_key=None):
+    def read_metadata(self, tr_path, /, include_key=None, exclude_key=None):
         """Unlike `read()`, this only loads and overwrites selected properties:
             trackers, comment, created_by, creation_date, encoding, source
 
         Arguments:
-        tpath: the path to the torrent
+        tr_path: the path to the torrent
         `include_key`: str or set of str, only these keys will be copied
             keys: {trackers, comment, created_by, creation_date, encoding, source} (default=all)
         `exclude_key`: str or set of str, these keys will not be copied (override `include_key`)
@@ -621,9 +621,9 @@ class Torrent:
             exclude_key = {'source'}
         if include_key is None:
             include_key = {}
-        tpath = pathlib.Path(tpath)
-        if not tpath.is_file():
-            raise FileNotFoundError(f"The supplied '{tpath}' does not exist.")
+        tr_path = pathlib.Path(tr_path)
+        if not tr_path.is_file():
+            raise FileNotFoundError(f"The supplied '{tr_path}' does not exist.")
 
         key_set = {'tracker', 'comment', 'created_by', 'creation_date', 'encoding', 'source'}
         include_key = {include_key} if isinstance(include_key, str) else (
@@ -633,7 +633,7 @@ class Torrent:
             raise KeyError('Invalid key supplied.')
 
         template = Torrent()
-        template.read(tpath)
+        template.read(tr_path)
         for key in include_key.difference(exclude_key):
             if key == 'tracker':
                 self._tracker_lst.extend(template.tracker_list)
@@ -645,46 +645,46 @@ class Torrent:
                 self._creator_str = template.created_by
                 continue
             elif key == 'creation_date' and template.creation_date:
-                self._datesec_int = template.creation_date
+                self._datetime_int = template.creation_date
                 continue
             elif key == 'encoding' and template.encoding:
                 self._enc4txt_str = template.encoding
                 continue
             elif key == 'source' and template.source:
-                self._tsource_str = template.source
+                self._tr_source_str = template.source
                 continue
             raise RuntimeError('Loop not correctly continued.')
 
-    def load(self, spath, keep_name=False, show_progress=False):
-        """Load new file list and piece hash from the Source PATH (spath).
+    def load(self, src_path, keep_name=False, show_progress=False):
+        """Load new file list and piece hash from the Source PATH (src_path).
 
         The following torrent keys will be overwritten on success:
-            files, name (may be preserved by `keep_name=True`), pieces
+            files, name (maybe preserved by `keep_name=True`), pieces
 
         Arguments:
-        spath: path-like objects, the source path to be loaded
+        src_path: path-like objects, the source path to be loaded
         keep_name: bool=False, whether to keep the old torrent name
         show_progress: bool=False, whether to show a progress bar during loading, maybe removed in the future
         """
         # argument handler
-        spath = pathlib.Path(spath)
-        if not spath.exists():
-            raise FileNotFoundError(f"The supplied '{spath}' does not exist.")
+        src_path = pathlib.Path(src_path)
+        if not src_path.exists():
+            raise FileNotFoundError(f"The supplied '{src_path}' does not exist.")
         keep_name = bool(keep_name)
         show_progress = bool(show_progress)
 
-        fpaths = [spath] if spath.is_file() else sorted(filter(methodcaller('is_file'), spath.rglob('*')))
-        fpath_list = [fpath.relative_to(spath) for fpath in fpaths]
-        fsize_list = [fpath.stat().st_size for fpath in fpaths]
-        if sum(fsize_list):
+        f_paths = [src_path] if src_path.is_file() else sorted(filter(methodcaller('is_file'), src_path.rglob('*')))
+        f_path_list = [fpath.relative_to(src_path) for fpath in f_paths]
+        f_size_list = [fpath.stat().st_size for fpath in f_paths]
+        if sum(f_size_list):
             if show_progress:  # TODO: stdout is dirty in core class method and should be moved out in the future
                 sha1 = b''
                 piece_bytes = bytes()
-                pbar1 = tqdm.tqdm(total=sum(fsize_list), desc='Size', unit='B', unit_scale=True, ascii=True, dynamic_ncols=True)
-                pbar2 = tqdm.tqdm(total=len(fsize_list), desc='File', unit='', ascii=True, dynamic_ncols=True)
-                for fpath in fpaths:
-                    with fpath.open('rb', buffering=0) as fobj:
-                        while read_bytes := fobj.read(self.piece_length - len(piece_bytes)):
+                pbar1 = tqdm.tqdm(total=sum(f_size_list), desc='Size', unit='B', unit_scale=True, ascii=True, dynamic_ncols=True)
+                pbar2 = tqdm.tqdm(total=len(f_size_list), desc='File', unit='', ascii=True, dynamic_ncols=True)
+                for f_path in f_paths:
+                    with f_path.open('rb', buffering=0) as f_obj:
+                        while read_bytes := f_obj.read(self.piece_length - len(piece_bytes)):
                             piece_bytes += read_bytes
                             if len(piece_bytes) == self.piece_length:
                                 sha1 += hash_sha1(piece_bytes)
@@ -697,9 +697,9 @@ class Torrent:
             else:  # not show progress bar
                 sha1 = b''
                 piece_bytes = bytes()
-                for fpath in fpaths:
-                    with fpath.open('rb', buffering=0) as fobj:
-                        while read_bytes := fobj.read(self.piece_length - len(piece_bytes)):
+                for f_path in f_paths:
+                    with f_path.open('rb', buffering=0) as f_obj:
+                        while read_bytes := f_obj.read(self.piece_length - len(piece_bytes)):
                             piece_bytes += read_bytes
                             if len(piece_bytes) == self.piece_length:
                                 sha1 += hash_sha1(piece_bytes)
@@ -709,58 +709,58 @@ class Torrent:
             raise EmptySourceSize()
 
         # Everything looks good, let's update internal parameters
-        self.name = self.name if keep_name else spath.name
-        self._srcpath_lst = fpath_list
-        self._srcsize_lst = fsize_list
-        self._srcsha1_byt = sha1
+        self.name = self.name if keep_name else src_path.name
+        self._src_path_lst = f_path_list
+        self._src_size_lst = f_size_list
+        self._src_sha1_byte = sha1
 
-    def write(self, tpath, overwrite=False):
+    def write(self, tr_path, overwrite=False):
         """Save the torrent to file.
 
         Arguments:
-        tpath: path-like object, the path to save the torrent.
+        tr_path: path-like object, the path to save the torrent.
             If supplied an existing dir, it will be saved under that dir.
         overwrite: bool=False, whether to overwrite if the target file already exists.
         """
-        tpath = pathlib.Path(tpath)
+        tr_path = pathlib.Path(tr_path)
         overwrite = bool(overwrite)
         if error := self.check():
             raise TorrentNotReadyError(f"The torrent is not ready to be saved: {error}.")
 
-        fpath = tpath.joinpath(f"{self.name}.torrent") if tpath.is_dir() else tpath
+        fpath = tr_path.joinpath(f"{self.name}.torrent") if tr_path.is_dir() else tr_path
         if fpath.is_file() and not overwrite:
             raise FileExistsError(f"The target '{fpath}' already exists.")
         else:
             fpath.parent.mkdir(parents=True, exist_ok=True)
             fpath.write_bytes(bencode(self.torrent_dict, self.encoding))
 
-    def verify(self, spath):
+    def verify(self, src_path):
         """Verify external source files with the internal torrent.
 
         Argument:
-        path: the path to source files.
+        src_path: the path to source files.
 
         Return:
         The piece index from 0 that failed to hash
         """
-        spath = pathlib.Path(spath)
-        if not spath.exists():
-            raise FileNotFoundError(f"The source path '{spath}' does not exist.")
-        if error := self.check():
+        src_path = pathlib.Path(src_path)
+        if not src_path.exists():
+            raise FileNotFoundError(f"The source path '{src_path}' does not exist.")
+        if self.check():
             raise TorrentNotReadyError(f"The torrent is not ready for verification.")
 
         if self.num_files == 1:
-            if spath.is_file() and spath.name == self.name:
-                spath = spath
-            elif spath.is_dir():
-                raise IsADirectoryError(f"Expect a single file, not a directory '{spath}'.")
+            if src_path.is_file() and src_path.name == self.name:
+                src_path = src_path
+            elif src_path.is_dir():
+                raise IsADirectoryError(f"Expect a single file, not a directory '{src_path}'.")
             else:
                 raise RuntimeError('Unexpected Error.')
         elif self.num_files > 1:
-            if spath.is_file():
-                raise NotADirectoryError(f"Expect a directory, not a single file '{spath}'.")
-            elif spath.is_dir() and spath.name == self.name:
-                spath = spath
+            if src_path.is_file():
+                raise NotADirectoryError(f"Expect a directory, not a single file '{src_path}'.")
+            elif src_path.is_dir() and src_path.name == self.name:
+                src_path = src_path
             else:
                 raise RuntimeError('Unexpected Error.')
         else:
@@ -769,12 +769,12 @@ class Torrent:
         piece_bytes = bytes()
         piece_idx = 0
         piece_error_list = []
-        for fsize, fpath in self.file_list:
-            dest_fpath = spath.joinpath(*fpath)
+        for f_size, f_path in self.file_list:
+            dest_fpath = src_path.joinpath(*f_path)
             if dest_fpath.is_file():
-                read_quota = min(fsize, dest_fpath.stat().st_size)  # we only need to load the smaller file size
-                with dest_fpath.open('rb', buffering=0) as dest_fobj:
-                    while read_bytes := dest_fobj.read(min(self.piece_length - len(piece_bytes), read_quota)):
+                read_quota = min(f_size, dest_fpath.stat().st_size)  # we only need to load the smaller file size
+                with dest_fpath.open('rb', buffering=0) as dest_f_obj:
+                    while read_bytes := dest_f_obj.read(min(self.piece_length - len(piece_bytes), read_quota)):
                         piece_bytes += read_bytes
                         if len(piece_bytes) == self.piece_length:  # whole piece loaded
                             if hash_sha1(piece_bytes) != self.pieces[20 * piece_idx: 20 * piece_idx + 20]:  # sha1 mismatch
@@ -783,10 +783,10 @@ class Torrent:
                             piece_bytes = bytes()  # whole piece loaded, clear existing bytes
                         if (read_quota := read_quota - len(read_bytes)) == 0:  # smaller file read
                             # we need to fill remaining bytes
-                            piece_bytes += b'\0' * diff if (diff := fsize - dest_fpath.stat().st_size) > 0 else b''
+                            piece_bytes += b'\0' * diff if (diff := f_size - dest_fpath.stat().st_size) > 0 else b''
                             break
             else:  # the file does not exist
-                size = len(piece_bytes) + fsize
+                size = len(piece_bytes) + f_size
                 n_empty_piece, piece_blank_shift = divmod(size, self.piece_length)
                 piece_bytes = b'\0' * piece_blank_shift  # it should be OK to just replace existing piece_bytes by \0
                 for _ in range(n_empty_piece):
@@ -820,7 +820,7 @@ class Torrent:
             ret.append('Too less pieces for content size.')
         try:
             codecs.lookup(self.encoding)
-        except LookupError as e:
+        except LookupError:
             ret.append(f"Invalid encoding {self.encoding}.")
         try:
             bencode(self.torrent_dict, self.encoding)
@@ -828,7 +828,7 @@ class Torrent:
             ret.append(f"Torrent bencoding failed ({e}).")
         return ret
 
-    def index(self, path, /, num=1):
+    def index(self, filename, /, num=1):
         """Given filename, return its piece index.
 
         Arguments:
@@ -840,22 +840,22 @@ class Torrent:
         A list of 3-element tuple of (path, start-index, end-index)
             Indexed in python style, from 0 to len-1, and [m, n+1] for items from m to n
         """
-        fparts = pathlib.Path(path).parts
+        f_parts = pathlib.Path(filename).parts
         num = int(num) if int(num) > 0 else 0
         if self.check():
             raise TorrentNotReadyError('Torrent is not ready for indexing.')
 
         ret = []
         loaded_size = 0
-        for fsize, fpath in self.file_list:
-            n_shorter = min(len(fpath), len(fparts))
-            if fpath[:-n_shorter - 1:-1] == fparts[:-n_shorter - 1:-1]:
-                ret.append([os.path.join(self.name, *fpath),
+        for f_size, f_path in self.file_list:
+            n_shorter = min(len(f_path), len(f_parts))
+            if f_path[:-n_shorter - 1:-1] == f_parts[:-n_shorter - 1:-1]:
+                ret.append([os.path.join(self.name, *f_path),
                             math.floor(loaded_size / self.piece_length),
-                            math.ceil((loaded_size + fsize) / self.piece_length)])
+                            math.ceil((loaded_size + f_size) / self.piece_length)])
                 if (num := num - 1) == 0:
                     break
-            loaded_size += fsize
+            loaded_size += f_size
 
         return ret
 
@@ -865,12 +865,12 @@ class Torrent:
             raise TorrentNotReadyError('Torrent is not ready to for item getter.')
 
         if isinstance(key, int):
-            lsize = self.piece_length * (key if key >= 0 else self.num_pieces + key)
-            hsize = lsize + self.piece_length
+            l_size = self.piece_length * (key if key >= 0 else self.num_pieces + key)
+            h_size = l_size + self.piece_length
         elif isinstance(key, slice):
             if key.step in (1, None):
-                lsize = self.piece_length * (key.start if key.start >= 0 else self.num_pieces + key.start)
-                hsize = self.piece_length * (key.stop if key.stop >= 0 else self.num_pieces + key.stop)
+                l_size = self.piece_length * (key.start if key.start >= 0 else self.num_pieces + key.start)
+                h_size = self.piece_length * (key.stop if key.stop >= 0 else self.num_pieces + key.stop)
             else:
                 raise ValueError(f"Piece index step must be 1, not {key.step}.")
         else:
@@ -878,15 +878,15 @@ class Torrent:
 
         ret = []
 
-        if lsize >= hsize or lsize >= self.size:
+        if l_size >= h_size or l_size >= self.size:
             return ret
 
         size = 0
-        for fsize, fpath in self.file_list:
-            size += fsize
-            if size > lsize:
-                ret.append(os.path.join(self.name, *fpath))
-            if size >= hsize:
+        for f_size, f_path in self.file_list:
+            size += f_size
+            if size > l_size:
+                ret.append(os.path.join(self.name, *f_path))
+            if size >= h_size:
                 break
 
         return ret
