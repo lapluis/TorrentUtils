@@ -21,19 +21,16 @@ def bencode(obj, encoding: str = 'utf-8') -> bytes:
 
         x = payload
 
-        if isinstance(x, bytes):
-            out.append(str(len(x)).encode(encoding))
-            out.append(b':')
-            out.append(x)
-
-        elif isinstance(x, str):
-            bx = x.encode(encoding)
+        if isinstance(x, (bytes, str)):
+            bx = x.encode(encoding) if isinstance(x, str) else x
             out.append(str(len(bx)).encode(encoding))
             out.append(b':')
             out.append(bx)
 
         elif isinstance(x, int):
-            out.append(b'i' + str(x).encode(encoding) + b'e')
+            out.append(b'i')
+            out.append(str(x).encode(encoding))
+            out.append(b'e')
 
         elif isinstance(x, (list, tuple)):
             stack.append(('emit', b'e'))
@@ -64,7 +61,7 @@ def bdecode(b: bytes, encoding: str = 'ascii'):
     b_len = len(b)
     idx = 0
 
-    stack: list[tuple[str, list]] = []  # Stack Frame: ('l'| 'd', items_list)
+    stack: list[tuple[bytes, list]] = []  # Stack Frame: ('l'| 'd', items_list)
     root = None
 
     def push_value(value):
@@ -77,9 +74,11 @@ def bdecode(b: bytes, encoding: str = 'ascii'):
             else:
                 raise BdecodeError('Malformed input.')
 
+    ord_bi, ord_be, ord_bl, ord_bd, ord_b0, ord_b9 = ord(b'i'), ord(b'e'), ord(b'l'), ord(b'd'), ord(b'0'), ord(b'9')
+
     while idx < b_len:
         t = b[idx]
-        if t == ord(b'i'):  # integer: i<digits>e
+        if t == ord_bi:  # integer: i<digits>e
             j = b.find(b'e', idx + 1)
             if j == -1:
                 raise BdecodeError('Malformed input (unterminated integer).')
@@ -90,19 +89,19 @@ def bdecode(b: bytes, encoding: str = 'ascii'):
             push_value(num)
             idx = j + 1
 
-        elif t == ord(b'l'):  # list
-            stack.append(('l', []))
+        elif t == ord_bl:  # list
+            stack.append((b'l', []))
             idx += 1
 
-        elif t == ord(b'd'):  # dict
-            stack.append(('d', []))
+        elif t == ord_bd:  # dict
+            stack.append((b'd', []))
             idx += 1
 
-        elif t == ord(b'e'):  # end of list/dict
+        elif t == ord_be:  # end of list/dict
             if not stack:
                 raise BdecodeError('Malformed input (unexpected end).')
             typ, items = stack.pop()
-            if typ == 'l':  # list
+            if typ == b'l':  # list
                 val = items
             else:  # dict
                 if len(items) % 2 != 0:
@@ -111,7 +110,7 @@ def bdecode(b: bytes, encoding: str = 'ascii'):
             push_value(val)
             idx += 1
 
-        elif ord(b'0') <= t <= ord(b'9'):  # '0'...'9' => byte string: <len>:<payload>
+        elif ord_b0 <= t <= ord_b9:
             j = b.find(b':', idx)
             if j == -1:
                 raise BdecodeError('Malformed string length.')
