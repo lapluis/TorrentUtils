@@ -1,5 +1,6 @@
 import json
 import math
+import os
 import pathlib
 import shutil
 import sys
@@ -9,7 +10,7 @@ from itertools import chain
 
 from .errors import BdecodeError, EmptySourceSize, PieceSizeUncommon, PieceSizeTooSmall
 from .torrent import Torrent
-import os
+
 
 class Path(type(pathlib.Path())):
 
@@ -179,7 +180,7 @@ class Main:
                     tr_path = src_path if not f_paths[1:] else (
                         f_paths[1].joinpath(src_path.name) if f_paths[1].is_dir() else (
                             f_paths[1] if f_paths[1].suffix.lower() == '.torrent' else
-                                f_paths[1].parent.joinpath(f"{f_paths[1].name}.torrent")))
+                            f_paths[1].parent.joinpath(f"{f_paths[1].name}.torrent")))
                     if src_path == tr_path:
                         print('W: You are likely to overwrite the source torrent, which may be unexpected.')
                 else:
@@ -416,7 +417,9 @@ class Main:
             if src_path.is_file() and src_path.name == tr_name:
                 src_path = self.src_path
             elif src_path.is_dir():
-                if Path(tr_name) in src_path.iterdir() and (tmp := src_path.joinpath(tr_name)).is_file():
+                if src_path.name == tr_name:
+                    src_path = self.src_path
+                elif Path(os.path.join(src_path, tr_name)) in src_path.iterdir() and (tmp := src_path.joinpath(tr_name)).is_file():
                     src_path = tmp
                 else:
                     self.__exit(f"E: The source file '{src_path}' was not found.")

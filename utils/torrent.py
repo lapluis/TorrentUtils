@@ -127,14 +127,13 @@ class Torrent:
 
     @property
     def files(self) -> list:
-        """Return the list of file size and path parts if no less than 2 files (repel `length`). Read-only."""
-        return list([f_size, f_path.parts] for f_size, f_path in zip(self._src_size_lst, self._src_path_lst)) \
-            if len(self._src_path_lst) >= 2 else []
+        """Return the list of file size and path parts. Read-only."""
+        return list([f_size, f_path.parts] for f_size, f_path in zip(self._src_size_lst, self._src_path_lst))
 
     @property
     def length(self) -> int:
         """Return the size of single file torrent (repel `files`). Read-only."""
-        return self._src_size_lst[0] if len(self._src_size_lst) == 1 else 0
+        return self._src_size_lst[0] if len(self._src_size_lst) == 1 and len(self.files) == 0 else 0
 
     @property
     def name(self) -> str:
@@ -753,7 +752,10 @@ class Torrent:
             if src_path.is_file() and src_path.name == self.name:
                 src_path = src_path
             elif src_path.is_dir():
-                raise IsADirectoryError(f"Expect a single file, not a directory '{src_path}'.")
+                if os.path.isfile(os.path.join(src_path, self.file_list[0][1][0])) and src_path.name == self.name:
+                    src_path = src_path
+                else:
+                    raise IsADirectoryError(f"Expect a single file, not a directory '{src_path}'.")
             else:
                 raise RuntimeError('Unexpected Error.')
         elif self.num_files > 1:
