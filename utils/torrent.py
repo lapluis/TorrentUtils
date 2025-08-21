@@ -593,7 +593,7 @@ class Torrent:
 
         self._src_sha1_byte = pieces
         if length and not files:
-            self._src_path_lst = [pathlib.Path('..')]
+            self._src_path_lst = [pathlib.Path('.')]
             self._src_size_lst = [length]
         elif not length and files:
             f_size_list = []
