@@ -1,66 +1,136 @@
-# Modified from <https://github.com/utdemir/bencoder>.
-
-import re
-import string
-from functools import partial
+from typing import Any, List, Tuple, Union, Literal
 
 from .errors import BdecodeError
 
-
-def bencode(obj, enc: str = 'UTF-8') -> bytes:
-    """Bencode objects."""
-    if isinstance(obj, bytes):
-        ret = str(len(obj)).encode(enc) + b':' + obj
-    elif isinstance(obj, str):
-        ret = bencode(obj.encode(enc))
-    elif isinstance(obj, int):
-        ret = b'i' + str(obj).encode(enc) + b'e'
-    elif isinstance(obj, (list, tuple)):
-        ret = b'l' + b''.join(map(partial(bencode, enc=enc), obj)) + b'e'
-    elif isinstance(obj, dict):
-        ret = b'd'
-        for key, val in sorted(obj.items()):
-            if isinstance(key, (bytes, str)):
-                ret += bencode(key, enc) + bencode(val, enc)
-            else:
-                raise TypeError(f'Expect str or bytes, not {key}:{type(key)}.')
-        ret += b'e'
-    else:
-        raise TypeError(f'Expect int, bytes, list or dict, not {obj}:{type(obj)}.')
-
-    return ret
+StackItem = Union[
+    Tuple[Literal['emit'], bytes],
+    Tuple[Literal['proc'], Any],
+]
 
 
-def bdecode(s: bytes, encoding='ascii'):
-    """Bdecode bytes."""
-    s = s.encode(encoding) if isinstance(s, str) else s
-    ret, rest = decode_core(s, encoding)
-    if rest:
-        raise BdecodeError('Malformed input.')
-    return ret
+def bencode(obj, encoding: str = 'utf-8') -> bytes:
+    out: List[bytes] = []
+    stack: List[StackItem] = [('proc', obj)]
 
+    while stack:
+        tag, payload = stack.pop()
 
-def decode_core(s, encoding):
-    if s.startswith(b'i'):
-        match = re.match(b'i(-?\\d+)e', s)
-        return int(match.group(1)), s[match.span()[1]:]
-    elif s.startswith(b'l') or s.startswith(b'd'):
-        l = []
-        rest = s[1:]
-        while not rest.startswith(b'e'):
-            elem, rest = decode_core(rest, encoding)
-            l.append(elem)
-        rest = rest[1:]
-        if s.startswith(b'l'):
-            return l, rest
+        if tag == 'emit':
+            out.append(payload)
+            continue
+
+        x = payload
+
+        if isinstance(x, bytes):
+            out.append(str(len(x)).encode(encoding))
+            out.append(b':')
+            out.append(x)
+
+        elif isinstance(x, str):
+            bx = x.encode(encoding)
+            out.append(str(len(bx)).encode(encoding))
+            out.append(b':')
+            out.append(bx)
+
+        elif isinstance(x, int):
+            out.append(b'i' + str(x).encode(encoding) + b'e')
+
+        elif isinstance(x, (list, tuple)):
+            stack.append(('emit', b'e'))
+            for elem in reversed(x):
+                stack.append(('proc', elem))
+            stack.append(('emit', b'l'))
+
+        elif isinstance(x, dict):
+            items = sorted(x.items())
+            for k, _ in items:
+                if not isinstance(k, (bytes, str)):
+                    raise TypeError(f'Expect str or bytes, not {k}:{type(k)}.')
+            stack.append(('emit', b'e'))
+            for k, v in reversed(items):
+                stack.append(('proc', v))
+                stack.append(('proc', k))
+            stack.append(('emit', b'd'))
+
         else:
-            return {i: j for i, j in zip(l[::2], l[1::2])}, rest
-    elif any(s.startswith(i.encode(encoding)) for i in string.digits):
-        m = re.match(b'(\\d+):', s)
-        length = int(m.group(1))
-        rest_i = m.span()[1]
-        start = rest_i
-        end = rest_i + length
-        return s[start:end], s[end:]
-    else:
-        raise BdecodeError('Malformed input.')
+            raise TypeError(f'Expect int, bytes, list or dict, not {x}:{type(x)}.')
+
+    return b''.join(out)
+
+
+def bdecode(b: bytes, encoding: str = 'ascii'):
+    """Iterative bdecode."""
+    b = b.encode(encoding) if isinstance(b, str) else b
+    b_len = len(b)
+    idx = 0
+
+    stack: list[tuple[str, list]] = []  # Stack Frame: ('l'| 'd', items_list)
+    root = None
+
+    def push_value(value):
+        nonlocal root
+        if stack:
+            stack[-1][1].append(value)
+        else:
+            if root is None:
+                root = value
+            else:
+                raise BdecodeError('Malformed input.')
+
+    while idx < b_len:
+        t = b[idx]
+        if t == ord(b'i'):  # integer: i<digits>e
+            j = b.find(b'e', idx + 1)
+            if j == -1:
+                raise BdecodeError('Malformed input (unterminated integer).')
+            try:
+                num = int(b[idx + 1:j])
+            except ValueError:
+                raise BdecodeError('Malformed integer.')
+            push_value(num)
+            idx = j + 1
+
+        elif t == ord(b'l'):  # list
+            stack.append(('l', []))
+            idx += 1
+
+        elif t == ord(b'd'):  # dict
+            stack.append(('d', []))
+            idx += 1
+
+        elif t == ord(b'e'):  # end of list/dict
+            if not stack:
+                raise BdecodeError('Malformed input (unexpected end).')
+            typ, items = stack.pop()
+            if typ == 'l':  # list
+                val = items
+            else:  # dict
+                if len(items) % 2 != 0:
+                    raise BdecodeError('Malformed dict (odd number of items).')
+                val = {items[k]: items[k + 1] for k in range(0, len(items), 2)}
+            push_value(val)
+            idx += 1
+
+        elif ord(b'0') <= t <= ord(b'9'):  # '0'...'9' => byte string: <len>:<payload>
+            j = b.find(b':', idx)
+            if j == -1:
+                raise BdecodeError('Malformed string length.')
+            try:
+                length = int(b[idx:j])
+            except ValueError:
+                raise BdecodeError('Malformed string length.')
+            start = j + 1
+            end = start + length
+            if end > b_len:
+                raise BdecodeError('Malformed string (truncated).')
+            push_value(b[start:end])
+            idx = end
+
+        else:
+            raise BdecodeError('Malformed input (unknown token).')
+
+    if stack:
+        raise BdecodeError('Malformed input (unterminated list/dict).')
+    if root is None:
+        raise BdecodeError('Empty input.')
+    return root
