@@ -376,9 +376,9 @@ class Torrent:
         else:
             for url in urls:
                 try:
-                    idx = self._tracker_lst.index(url)
+                    _ = self._tracker_lst.index(url)
                 except ValueError:  # not found, add it
-                    self.append(url)
+                    self._tracker_lst.append(url)
                 else:  # found, no need to update its position
                     pass
 
@@ -606,7 +606,7 @@ class Torrent:
         else:
             raise ValueError('Unexpected error in handling source files structure.')
 
-    def readMetadata(self, tpath, /, include_key={}, exclude_key={'source'}):
+    def readMetadata(self, tpath, /, include_key=None, exclude_key=None):
         """Unlike `read()`, this only loads and overwrites selected properties:
             trackers, comment, created_by, creation_date, encoding, source
 
@@ -617,6 +617,10 @@ class Torrent:
         `exclude_key`: str or set of str, these keys will not be copied (override `include_key`)
             keys: {trackers, comment, created_by, creation_date, encoding, source} (default='source')
         """
+        if exclude_key is None:
+            exclude_key = {'source'}
+        if include_key is None:
+            include_key = {}
         tpath = pathlib.Path(tpath)
         if not tpath.is_file():
             raise FileNotFoundError(f"The supplied '{tpath}' does not exist.")
@@ -632,7 +636,7 @@ class Torrent:
         template.read(tpath)
         for key in include_key.difference(exclude_key):
             if key == 'tracker':
-                self._tracker_lst.addTracker(template.trackers)
+                self._tracker_lst.extend(template.tracker_list)
                 continue
             elif key == 'comment' and template.comment:
                 self._comment_str = template.comment
@@ -695,7 +699,7 @@ class Torrent:
                 piece_bytes = bytes()
                 for fpath in fpaths:
                     with fpath.open('rb', buffering=0) as fobj:
-                        while (read_bytes := fobj.read(self.piece_length - len(piece_bytes))):
+                        while read_bytes := fobj.read(self.piece_length - len(piece_bytes)):
                             piece_bytes += read_bytes
                             if len(piece_bytes) == self.piece_length:
                                 sha1 += hash_sha1(piece_bytes)
